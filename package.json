@@ -1,6 +1,6 @@
 {
   "name": "qwen-studio-pp",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "Qwen Studio++ - Local OpenAI-compatible API gateway for Qwen Studio (chat.qwen.ai). Zero runtime dependencies.",
   "main": "lib/server.js",
   "bin": {
@@ -20,6 +20,14 @@
     "cherry-studio"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GCX121017/qwenstudiopp.git"
+  },
+  "homepage": "https://github.com/GCX121017/qwenstudiopp#readme",
+  "bugs": {
+    "url": "https://github.com/GCX121017/qwenstudiopp/issues"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
