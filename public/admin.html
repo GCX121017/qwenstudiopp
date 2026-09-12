@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qwen Studio++ 管理台</title>
+<style>
+:root {
+  --bg: #0a0f1c; --bg2: #0e1628; --card: #121c33; --card2: #16233f;
+  --line: #223253; --txt: #dbe7ff; --dim: #7d92b8; --dim2: #55688c;
+  --acc: #38bdf8; --acc2: #0ea5e9; --ok: #34d399; --warn: #fbbf24; --bad: #f87171;
+  --radius: 14px;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, 'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background:
+    radial-gradient(1200px 500px at 80% -10%, rgba(56,189,248,.10), transparent 60%),
+    radial-gradient(900px 420px at 10% 110%, rgba(99,102,241,.08), transparent 60%),
+    var(--bg);
+  color: var(--txt);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Roboto, sans-serif;
+  min-height: 100vh; padding: 0 16px 48px;
+}
+.wrap { max-width: 980px; margin: 0 auto; }
+a { color: var(--acc); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: var(--mono); background: rgba(56,189,248,.10); border: 1px solid rgba(56,189,248,.18); padding: 1px 6px; border-radius: 6px; font-size: .86em; color: #a5d8ff; word-break: break-all; }
+
+/* header */
+header { display: flex; align-items: center; gap: 14px; padding: 26px 4px 20px; flex-wrap: wrap; }
+.logo { width: 44px; height: 44px; border-radius: 12px; flex: none;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 20px; color: #fff;
+  box-shadow: 0 6px 18px rgba(14,165,233,.35); }
+h1 { font-size: 21px; font-weight: 700; letter-spacing: .3px; }
+h1 small { color: var(--dim2); font-weight: 500; font-size: 12px; margin-left: 8px; }
+.hstat { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--dim); }
+.badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim2); }
+.badge.ok { color: var(--ok); border-color: rgba(52,211,153,.35); } .badge.ok .dot { background: var(--ok); box-shadow: 0 0 8px rgba(52,211,153,.8); }
+.badge.bad { color: var(--bad); border-color: rgba(248,113,113,.35); } .badge.bad .dot { background: var(--bad); }
+
+/* cards */
+.card { background: linear-gradient(180deg, var(--card), var(--bg2)); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; margin-bottom: 18px; }
+.card h2 { font-size: 15.5px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 9px; }
+.card h2 .step { width: 22px; height: 22px; border-radius: 7px; background: rgba(56,189,248,.15); color: var(--acc); font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.card .sub { color: var(--dim); font-size: 12.5px; margin-bottom: 15px; line-height: 1.6; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.grow { flex: 1 1 240px; min-width: 0; }
+
+input[type=text], input[type=password], textarea, select {
+  width: 100%; background: #0b1322; color: var(--txt); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 13px; font-size: 13.5px; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--acc2); box-shadow: 0 0 0 3px rgba(14,165,233,.15); }
+textarea { resize: vertical; min-height: 88px; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; }
+select { cursor: pointer; }
+label.check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--dim); cursor: pointer; user-select: none; }
+label.check input { accent-color: var(--acc2); width: 15px; height: 15px; }
+
+button { border: 1px solid var(--line); background: var(--card2); color: var(--txt);
+  border-radius: 10px; padding: 9px 16px; font-size: 13.5px; cursor: pointer;
+  transition: all .15s; font-family: inherit; white-space: nowrap; }
+button:hover { border-color: var(--acc2); color: var(--acc); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: linear-gradient(135deg, var(--acc2), #2563eb); border: none; color: #fff; font-weight: 600; box-shadow: 0 4px 14px rgba(14,165,233,.3); }
+button.primary:hover { filter: brightness(1.1); color: #fff; }
+button.ghost { background: transparent; }
+button.danger:hover { border-color: var(--bad); color: var(--bad); }
+button.mini { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+
+.msg { font-size: 12.5px; line-height: 1.6; margin-top: 10px; padding: 9px 12px; border-radius: 9px; display: none; }
+.msg.show { display: block; }
+.msg.ok { background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.3); color: var(--ok); }
+.msg.bad { background: rgba(248,113,113,.09); border: 1px solid rgba(248,113,113,.3); color: var(--bad); }
+.msg.info { background: rgba(56,189,248,.08); border: 1px solid rgba(56,189,248,.25); color: #a5d8ff; }
+.msg a { color: inherit; }
+.diag { margin-top: 10px; font-size: 12.5px; line-height: 1.7; }
+.diag .dstep { display: flex; align-items: baseline; gap: 8px; padding: 5px 10px; border-radius: 8px; }
+.diag .dstep + .dstep { margin-top: 4px; }
+.diag .dstep.ok { background: rgba(52,211,153,.07); color: var(--ok); }
+.diag .dstep.bad { background: rgba(248,113,113,.07); color: var(--bad); }
+.diag .dstep .ddetail { color: var(--dim2); font-size: 11.5px; word-break: break-all; }
+.diag .dstep .dms { margin-left: auto; color: var(--dim2); font-size: 11.5px; flex: none; }
+.diag .dhint { margin-top: 8px; padding: 9px 12px; border-radius: 9px; background: rgba(56,189,248,.08); border: 1px solid rgba(56,189,248,.25); color: #a5d8ff; }
+
+/* key display */
+.keybox { display: flex; gap: 9px; align-items: stretch; flex-wrap: wrap; }
+.keybox input { font-family: var(--mono); font-size: 13px; flex: 1 1 260px; min-width: 0; }
+.hintline { font-size: 12px; color: var(--dim2); margin-top: 9px; line-height: 1.7; }
+
+/* tabs */
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 13px; }
+.tabs button { border-radius: 9px; padding: 7px 14px; font-size: 12.5px; }
+.tabs button.on { background: rgba(56,189,248,.14); border-color: var(--acc2); color: var(--acc); font-weight: 600; }
+pre.code { background: #081020; border: 1px solid var(--line); border-radius: 11px; padding: 15px 17px;
+  font-family: var(--mono); font-size: 12.3px; line-height: 1.72; color: #b8cdf1; overflow-x: auto; position: relative; white-space: pre-wrap; word-break: break-all; }
+pre.code .cm { color: var(--dim2); }
+pre.code .hl { color: var(--acc); }
+
+/* test chat */
+.tout { background: #081020; border: 1px solid var(--line); border-radius: 11px; margin-top: 13px; overflow: hidden; display: none; }
+.tout.show { display: block; }
+.tbar { display: flex; gap: 8px; align-items: center; padding: 8px 13px; border-bottom: 1px solid var(--line); font-size: 11.5px; color: var(--dim); flex-wrap: wrap; }
+.tbar .tag { border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
+.tbody { padding: 13px 15px; font-size: 13.5px; line-height: 1.8; }
+details.think { border: 1px dashed rgba(251,191,36,.3); background: rgba(251,191,36,.04); border-radius: 9px; margin-bottom: 12px; }
+details.think summary { cursor: pointer; padding: 8px 12px; font-size: 12px; color: var(--warn); user-select: none; }
+details.think .tc { padding: 4px 13px 11px; font-size: 12.3px; color: #d8c9a3; white-space: pre-wrap; line-height: 1.7; }
+.answer { white-space: pre-wrap; word-break: break-word; }
+.answer .cite { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 4px;
+  margin: 0 2px; background: rgba(56,189,248,.16); border: 1px solid rgba(56,189,248,.35); color: var(--acc);
+  border-radius: 6px; font-size: 10.5px; font-family: var(--mono); vertical-align: 1px; cursor: pointer; }
+.cursor { display: inline-block; width: 8px; height: 15px; background: var(--acc); vertical-align: -2px; animation: blink 1s step-start infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* settings */
+.setgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 13px; }
+.setgrid .f label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 6px; }
+
+details.help { border: 1px solid var(--line); border-radius: 10px; background: rgba(11,19,34,.7); margin-top: 12px; }
+details.help summary { cursor: pointer; padding: 10px 13px; font-size: 12.5px; color: var(--dim); user-select: none; }
+details.help .hc { padding: 2px 15px 14px; font-size: 12.8px; color: var(--dim); line-height: 1.85; }
+details.help ol, details.help ul { padding-left: 20px; }
+details.help b { color: var(--txt); }
+
+footer { text-align: center; color: var(--dim2); font-size: 11.5px; line-height: 1.9; padding: 10px 0 0; }
+.spin { width: 13px; height: 13px; border: 2px solid rgba(56,189,248,.25); border-top-color: var(--acc); border-radius: 50%; display: inline-block; animation: sp .7s linear infinite; vertical-align: -2px; }
+@keyframes sp { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Q++</div>
+    <h1>Qwen Studio++ <small id="ver"></small></h1>
+    <div class="hstat">
+      <span class="badge" id="b-qwen"><span class="dot"></span><span id="b-qwen-txt">Qwen 检测中…</span></span>
+      <span class="badge" id="b-port"><span class="dot"></span><span id="b-port-txt">服务运行中</span></span>
+    </div>
+  </header>
+
+  <!-- 1. Token -->
+  <div class="card" id="card-token">
+    <h2><span class="step">1</span>配置 Qwen Studio Token</h2>
+    <div class="sub">粘贴 chat.qwen.ai 的登录 Token（JWT）或整段 Cookie。保存前会自动验证连通性，通过后立即生效。若误带引号/说明文字，会自动提取 token 本体。</div>
+    <textarea id="t-token" placeholder="eyJhbGciOiJIUzI1NiIs...   (localStorage 里的 token)&#10;或整段: token=eyJ...; cna=...; tfstk=..."></textarea>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="btn-save-token">测试并保存</button>
+      <button class="ghost" id="btn-check">检测当前连接</button>
+      <button class="ghost" id="btn-diag" onclick="runNetDiag()">网络诊断</button>
+    </div>
+    <div class="msg" id="m-token"></div>
+    <div class="diag" id="diag-out"></div>
+    <details class="help">
+      <summary>如何获取 Token？（两种方式任选）</summary>
+      <div class="hc">
+        <b>方式 A · JWT Token（推荐，简单）</b>
+        <ol>
+          <li>浏览器打开 <a href="https://chat.qwen.ai" target="_blank" rel="noopener">chat.qwen.ai</a> 并确保已登录</li>
+          <li>按 <b>F12</b> 打开开发者工具 → 顶部 <b>Console（控制台）</b></li>
+          <li>输入 <code>localStorage.token</code> 回车，复制输出的引号内字符串（<code>eyJ</code> 开头）</li>
+        </ol>
+        <span style="color:var(--warn)">⚠ 只复制 token 本体，不要连同中文说明、笔记标注或引号一起复制（工具会自动提取纯净 token；若无法提取会精确指出第几个字符有问题）。</span>
+        <b>方式 B · 整段 Cookie</b>
+        <ol>
+          <li>F12 → <b>Network（网络）</b> → 刷新页面 → 点任意 <code>chat.qwen.ai</code> 请求</li>
+          <li>Request Headers 里复制整行 <code>cookie:</code> 的值粘贴进来</li>
+        </ol>
+        <span style="color:var(--warn)">注意：token 是你的账号凭证，仅保存在本机配置文件中，请勿泄露给他人。</span>
+      </div>
+    </details>
+  </div>
+
+  <!-- 2. API Key -->
+  <div class="card">
+    <h2><span class="step">2</span>本地 API 密钥</h2>
+    <div class="sub">调用本地 API 时使用的密钥（Bearer），首次启动自动生成。外部工具里填这个密钥即可。</div>
+    <div class="keybox">
+      <input type="text" id="t-key" readonly>
+      <button id="btn-copy-key">复制</button>
+      <button class="danger" id="btn-rekey">重新生成</button>
+    </div>
+    <div class="hintline">重新生成后，已保存到 Cherry Studio / zcode 等工具里的旧密钥会立即失效，需要同步更新。</div>
+  </div>
+
+  <!-- 3. 在线测试 -->
+  <div class="card">
+    <h2><span class="step">3</span>在线测试</h2>
+    <div class="sub">走完整链路（本地服务 → Qwen → 流式返回），直接验证 Token 和密钥是否就绪，思考过程实时可见。</div>
+    <div class="row">
+      <div class="grow"><select id="t-model"></select></div>
+      <label class="check"><input type="checkbox" id="t-think" checked>思考</label>
+    </div>
+    <div class="row" style="margin-top:11px">
+      <div class="grow"><input type="text" id="t-msg" placeholder="输入测试消息，如：唐朝开国皇帝是谁？" onkeydown="if(event.key==='Enter')sendTest()"></div>
+      <button class="primary" id="btn-send" onclick="sendTest()">发送</button>
+    </div>
+    <div class="tout" id="t-out">
+      <div class="tbar">
+        <span class="tag" id="o-model"></span>
+        <span class="tag" id="o-time">0.0s</span>
+        <span class="tag" id="o-stat">等待响应…</span>
+        <span style="margin-left:auto"></span>
+        <span class="tag" id="o-tok"></span>
+      </div>
+      <div class="tbody">
+        <details class="think" id="o-think-box" open><summary>思考摘要</summary><div class="tc" id="o-think"></div></details>
+        <div class="answer" id="o-ans"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 接入指南 -->
+  <div class="card">
+    <h2><span class="step">4</span>接入外部工具</h2>
+    <div class="sub">服务完全兼容 OpenAI Completion 协议。Base URL 与密钥已自动填入下方示例。</div>
+    <div class="tabs" id="tabs">
+      <button class="on" data-t="cherry">Cherry Studio</button>
+      <button data-t="zcode">zcode / CLI Agent</button>
+      <button data-t="curl">curl</button>
+      <button data-t="python">Python</button>
+      <button data-t="node">Node.js</button>
+    </div>
+    <pre class="code" id="guide-code"></pre>
+    <div class="hintline" id="guide-note"></div>
+  </div>
+
+  <!-- 5. 设置 -->
+  <div class="card">
+    <h2><span class="step">5</span>高级设置</h2>
+    <div class="setgrid">
+      <div class="f"><label>默认模型（请求未指定 model 时使用）</label><select id="s-model"></select></div>
+      <div class="f"><label>请求最小间隔（毫秒，防风控）</label><input type="text" id="s-throttle"></div>
+      <div class="f"><label>默认行为</label><div class="row">
+        <label class="check"><input type="checkbox" id="s-think">思考</label>
+        <label class="check"><input type="checkbox" id="s-open">启动时打开页面</label>
+      </div></div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="primary" id="btn-save-set">保存设置</button>
+      <span class="msg" id="m-set" style="margin:0"></span>
+    </div>
+    <div class="hintline">修改"请求最小间隔"可缓解连续调用触发 Qwen 滑块风控的概率（默认 3200ms）。端口修改请在启动命令中加 <code>--port</code>。</div>
+  </div>
+
+  <footer>
+    Qwen Studio++ v<span id="ver2"></span> · 本地服务，数据不出本机（除对 chat.qwen.ai 的直连请求）<br>
+    本工具基于 Qwen Studio 网页端接口封装，仅供个人学习研究与本地自动化使用，请遵守上游服务条款。
+  </footer>
+</div>
+<script>
+'use strict';
+let STATUS = null;
+
+const $ = (id) => document.getElementById(id);
+function showMsg(id, kind, html) {
+  const el = $(id);
+  el.className = 'msg show ' + kind;
+  el.innerHTML = html;
+}
+function hideMsg(id) { $(id).className = 'msg'; }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  } : {});
+  return r.json();
+}
+
+// ---------- 初始化 ----------
+async function init() {
+  try { STATUS = await api('/admin/api/status'); } catch (e) {
+    showMsg('m-token', 'bad', '无法读取服务状态: ' + esc(e.message)); return;
+  }
+  $('ver').textContent = $('ver2').textContent = 'v' + STATUS.version;
+  $('b-port-txt').textContent = '服务运行中 :' + STATUS.port;
+  $('b-port').classList.add('ok');
+  $('t-key').value = STATUS.apiKey;
+  $('t-token').placeholder = STATUS.hasToken
+    ? '当前已配置: ' + STATUS.tokenMask + '  (粘贴新 token 可覆盖)'
+    : $('t-token').placeholder;
+  $('s-throttle').value = STATUS.throttleMs;
+  $('s-think').checked = !!STATUS.thinking;
+  $('s-open').checked = STATUS.autoOpen !== false;
+
+  // 模型下拉 (status 里已有列表, 兜底静态)
+  let models = (STATUS.models && STATUS.models.length) ? STATUS.models : [{ id: 'qwen3.8-max', name: 'Qwen3.8-Max' }];
+  fillModels(models);
+  $('s-model').value = STATUS.defaultModel;
+  $('t-model').value = STATUS.defaultModel;
+  if ($('s-model').selectedIndex < 0) $('s-model').selectedIndex = 0;
+  if ($('t-model').selectedIndex < 0) $('t-model').selectedIndex = 0;
+
+  // qwen 状态徽章
+  updateQwenBadge(STATUS.qwenOk, STATUS.qwenCheckAt);
+
+  renderGuide('cherry');
+
+  // 已配 token 但状态未知/上轮失败时, 自动检测一次
+  if (STATUS.hasToken && STATUS.qwenOk !== true) checkConn();
+}
+
+function fillModels(models) {
+  const opts = models.map(m => `<option value="${esc(m.id)}">${esc(m.name || m.id)} (${esc(m.id)})</option>`).join('');
+  $('t-model').innerHTML = opts;
+  $('s-model').innerHTML = opts;
+}
+
+function updateQwenBadge(ok, at) {
+  const b = $('b-qwen');
+  if (ok === true) { b.className = 'badge ok'; $('b-qwen-txt').textContent = 'Qwen 已连接'; }
+  else if (ok === false) { b.className = 'badge bad'; $('b-qwen-txt').textContent = 'Qwen 未连接'; }
+  else { b.className = 'badge'; $('b-qwen-txt').textContent = 'Qwen 待检测'; }
+}
+
+// ---------- token ----------
+async function saveToken() {
+  const token = $('t-token').value.trim();
+  if (!token) { showMsg('m-token', 'bad', '请先粘贴 token'); return; }
+  const btn = $('btn-save-token');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> 验证中…';
+  hideMsg('m-token');
+  try {
+    const r = await api('/admin/api/token', { token });
+    if (r.ok) {
+      showMsg('m-token', 'ok', '✓ ' + esc(r.message) + ' — 已保存，可以进入下一步');
+      fillModels((r.models || []).map(id => ({ id, name: id })));
+      $('s-model').value = STATUS && STATUS.defaultModel;
+      updateQwenBadge(true);
+    } else {
+      const netFail = /无法连接|fetch failed/.test(r.message || '');
+      showMsg('m-token', 'bad', '✗ ' + esc(r.message) + ' — ' + (netFail
+        ? '这是网络连接问题（与 token 无关），正在自动运行网络诊断'
+        : '请检查 token 是否正确/过期（<a href="javascript:void(0)" onclick="document.querySelector(\'details.help\').open=true">查看获取方法</a>）'));
+      if (netFail) runNetDiag();
+      updateQwenBadge(false);
+    }
+  } catch (e) {
+    showMsg('m-token', 'bad', '请求失败: ' + esc(e.message));
+  } finally {
+    btn.disabled = false; btn.textContent = '测试并保存';
+  }
+}
+
+async function checkConn() {
+  const btn = $('btn-check');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> 检测中…';
+  try {
+    const r = await api('/admin/api/check', {});
+    if (r.ok) {
+      showMsg('m-token', 'ok', '✓ ' + esc(r.message));
+      updateQwenBadge(true);
+      fillModels((r.models || []).map(id => ({ id, name: id })));
+    } else {
+      const netFail = /无法连接|fetch failed/.test(r.message || '');
+      showMsg('m-token', 'bad', '✗ ' + esc(r.message) + (netFail ? ' — 网络连接问题，正在自动运行网络诊断' : ''));
+      if (netFail) runNetDiag();
+      updateQwenBadge(false);
+    }
+  } catch (e) {
+    showMsg('m-token', 'bad', '请求失败: ' + esc(e.message));
+  } finally {
+    btn.disabled = false; btn.textContent = '检测当前连接';
+  }
+}
+
+// ---------- 网络诊断 ----------
+async function runNetDiag() {
+  const btn = $('btn-diag'), out = $('diag-out');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> 诊断中…';
+  out.innerHTML = '<div class="dhint">正在逐层检测本机到 chat.qwen.ai 的连通性（DNS → TCP → TLS → HTTPS）…</div>';
+  try {
+    const r = await api('/admin/api/net-diag');
+    const rows = (r.steps || []).map(s =>
+      '<div class="dstep ' + (s.ok ? 'ok' : 'bad') + '"><span>' + (s.ok ? '✓' : '✗') + ' ' + esc(s.name) + '</span>' +
+      '<span class="ddetail">' + esc(s.detail || '') + '</span><span class="dms">' + s.ms + 'ms</span></div>'
+    ).join('');
+    out.innerHTML = rows + (r.hint ? '<div class="dhint">' + (r.ok ? '✓ ' : '💡 ') + esc(r.hint) + '</div>' : '');
+  } catch (e) {
+    out.innerHTML = '<div class="dhint">诊断请求失败: ' + esc(e.message) + '</div>';
+  } finally {
+    btn.disabled = false; btn.textContent = '网络诊断';
+  }
+}
+
+// ---------- key ----------
+function copyKey() {
+  const v = $('t-key').value;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(v).then(() => flashBtn('btn-copy-key', '已复制'));
+  } else {
+    $('t-key').select(); document.execCommand('copy'); flashBtn('btn-copy-key', '已复制');
+  }
+}
+function flashBtn(id, txt) {
+  const b = $(id), old = b.textContent;
+  b.textContent = txt;
+  setTimeout(() => b.textContent = old, 1200);
+}
+async function reKey() {
+  if (!confirm('确定重新生成 API 密钥？旧密钥将立即失效。')) return;
+  const r = await api('/admin/api/key/regenerate', {});
+  if (r.ok) { $('t-key').value = r.apiKey; flashBtn('btn-rekey', '已生成'); }
+}
+
+// ---------- 在线测试 ----------
+let testing = false;
+function renderAnswer(el, text) {
+  // 轻量渲染: 转义后按纯文本输出 (如上游返回 [[n]] 标记, 渲染为中性徽章)
+  let html = esc(text).replace(/\[\[(\d+)\]\]/g, '<span class="cite">[$1]</span>');
+  el.innerHTML = html;
+}
+async function sendTest() {
+  if (testing) return;
+  const msg = $('t-msg').value.trim();
+  if (!msg) return;
+  testing = true;
+  const btn = $('btn-send');
+  btn.disabled = true; btn.textContent = '生成中…';
+  const out = $('t-out');
+  out.classList.add('show');
+  $('o-ans').innerHTML = '';
+  $('o-think').textContent = '';
+  $('o-model').textContent = $('t-model').value;
+  $('o-tok').textContent = '';
+  $('o-stat').textContent = '连接 Qwen…';
+  const t0 = Date.now();
+  const timer = setInterval(() => { $('o-time').textContent = ((Date.now() - t0) / 1000).toFixed(1) + 's'; }, 100);
+
+  try {
+    const r = await fetch('/admin/api/test-chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: msg,
+        model: $('t-model').value,
+        thinking: $('t-think').checked
+      })
+    });
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '', ansText = '', thinkLen = 0;
+    $('o-ans').innerHTML = '<span class="cursor"></span>';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const frame = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 2);
+        if (!frame.startsWith('data:')) continue;
+        let evt; try { evt = JSON.parse(frame.slice(5).trim()); } catch (e) { continue; }
+        if (evt._e === 'thinking') {
+          $('o-think-box').open = true;
+          $('o-think').textContent += evt.delta;
+          thinkLen++;
+        } else if (evt._e === 'step') {
+          // 步骤标题变化时在思考区显示
+          $('o-think-box').querySelector('summary').textContent = '思考摘要 · ' + evt.titles.length + ' 步';
+        } else if (evt._e === 'content') {
+          ansText += evt.delta;
+          renderAnswer($('o-ans'), ansText);
+        } else if (evt._e === 'done') {
+          renderAnswer($('o-ans'), evt.answer || ansText);
+          if (evt.thinking) $('o-think').textContent = evt.thinking;
+          $('o-stat').textContent = '完成';
+          if (evt.usage) $('o-tok').textContent = 'in ' + (evt.usage.input_tokens || 0) + ' · out ' + (evt.usage.output_tokens || 0);
+          if (!ansText && !evt.answer) $('o-ans').innerHTML = '<span style="color:var(--dim)">(空回复)</span>';
+        } else if (evt._e === 'error') {
+          $('o-stat').textContent = '出错';
+          $('o-ans').innerHTML = '<span style="color:var(--bad)">' + esc(evt.message) + '</span>';
+        }
+      }
+    }
+  } catch (e) {
+    $('o-stat').textContent = '出错';
+    $('o-ans').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>';
+  } finally {
+    clearInterval(timer);
+    const c = document.querySelector('.cursor'); if (c) c.remove();
+    btn.disabled = false; btn.textContent = '发送';
+    testing = false;
+  }
+}
+
+// ---------- 接入指南 ----------
+function renderGuide(tab) {
+  const base = location.origin + '/v1';
+  const key = $('t-key').value || 'sk-qpp-xxx';
+  const codeEl = $('guide-code'), noteEl = $('guide-note');
+  const cm = (s) => `<span class="cm">${esc(s)}</span>`;
+  const hl = (s) => `<span class="hl">${esc(s)}</span>`;
+  let code = '', note = '';
+  if (tab === 'cherry') {
+    code =
+      `Cherry Studio → 设置 → 模型服务 → 添加「OpenAI 兼容」\n\n` +
+      `  API 地址:  ${hl(base.replace(/^http/, 'http'))}/          ${cm('(注意结尾带 /v1 时选 OpenAI 类型自动拼接)')}\n` +
+      `             ${hl(base)}\n` +
+      `  API 密钥:  ${hl(key)}\n` +
+      `  模型:      点「管理/获取模型」自动拉取 (qwen3.8-max 等)\n\n` +
+      `提示: 模型列表自动来自你的 Qwen 账号, 无需手动录入。`;
+    note = 'Cherry Studio 的「AI 伴侣 / 翻译 / 话题命名」等辅助功能会默认调用列表第一个模型，建议把 qwen3.8-max 拖到第一位。';
+  } else if (tab === 'zcode') {
+    code =
+      `# zcode / 各类 OpenAI 协议 CLI Agent 通用环境变量\n` +
+      `export OPENAI_BASE_URL=${hl(base)}\n` +
+      `export OPENAI_API_KEY=${hl(key)}\n` +
+      `export OPENAI_MODEL=qwen3.8-max\n\n` +
+      `# 或写入工具自己的配置文件 (yaml/json)\n` +
+      `base_url: ${hl(base)}\n` +
+      `api_key:  ${hl(key)}\n` +
+      `model:    qwen3.8-max`;
+    note = '任何支持「自定义 OpenAI 兼容端点」的 agent 工具（zcode、aider、continue、cline…）都按此三件套配置。';
+  } else if (tab === 'curl') {
+    code =
+      `curl ${hl(base)}/chat/completions \\\n` +
+      `  -H "Authorization: Bearer ${hl(key)}" \\\n` +
+      `  -H "Content-Type: application/json" \\\n` +
+      `  -d '{\n    "model": "qwen3.8-max",\n    "messages": [{"role":"user","content":"你好"}],\n    "stream": true\n  }'`;
+    note = 'stream: true 时返回 OpenAI 标准增量 chunk；false 时返回完整 JSON（思考文本在 message.reasoning_content）。';
+  } else if (tab === 'python') {
+    code =
+      `from openai import OpenAI\n\n` +
+      `client = OpenAI(\n` +
+      `    base_url="${hl(base)}",\n` +
+      `    api_key="${hl(key)}",\n` +
+      `)\n\n` +
+      `stream = client.chat.completions.create(\n` +
+      `    model="qwen3.8-max",\n` +
+      `    messages=[{"role": "user", "content": "写一首七言绝句"}],\n` +
+      `    stream=True,\n` +
+      `)\n` +
+      `for chunk in stream:\n` +
+      `    d = chunk.choices[0].delta\n` +
+      `    if d.content:\n` +
+      `        print(d.content, end="", flush=True)`;
+    note = '需要 pip install openai。reasoning_content 里的思考摘要 Cherry Studio 会自动折叠展示。';
+  } else if (tab === 'node') {
+    code =
+      `import OpenAI from "openai";\n\n` +
+      `const client = new OpenAI({\n` +
+      `  baseURL: "${hl(base)}",\n` +
+      `  apiKey: "${hl(key)}",\n` +
+      `});\n\n` +
+      `const stream = await client.chat.completions.create({\n` +
+      `  model: "qwen3.8-max",\n` +
+      `  messages: [{ role: "user", content: "你好" }],\n` +
+      `  stream: true,\n` +
+      `});\n` +
+      `for await (const chunk of stream) {\n` +
+      `  process.stdout.write(chunk.choices[0]?.delta?.content ?? "");\n` +
+      `}`;
+    note = '需要 npm i openai。请求体额外支持 "thinking": true/false 控制思考摘要输出。';
+  }
+  codeEl.innerHTML = code;
+  noteEl.innerHTML = note;
+}
+
+// ---------- 设置 ----------
+async function saveSettings() {
+  const r = await api('/admin/api/settings', {
+    defaultModel: $('s-model').value,
+    thinking: $('s-think').checked,
+    autoOpen: $('s-open').checked,
+    throttleMs: Number($('s-throttle').value) || 0
+  });
+  showMsg('m-set', r.ok ? 'ok' : 'bad', esc(r.message || (r.ok ? '已保存' : '保存失败')));
+  setTimeout(() => hideMsg('m-set'), 3000);
+}
+
+// ---------- 绑定 ----------
+$('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  renderGuide(b.dataset.t);
+});
+$('btn-save-token').addEventListener('click', saveToken);
+$('btn-check').addEventListener('click', checkConn);
+$('btn-copy-key').addEventListener('click', copyKey);
+$('btn-rekey').addEventListener('click', reKey);
+$('btn-save-set').addEventListener('click', saveSettings);
+
+init();
+</script>
+</body>
+</html>
