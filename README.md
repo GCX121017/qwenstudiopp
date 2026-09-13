@@ -55,7 +55,7 @@ cd /d "C:\你的解压路径\qwen-studio-pp"
 npm install -g .
 qspp --version
 ```
-显示 `qwen-studio-pp v1.1.8` 即安装成功，效果与脚本完全一致。
+显示 `qwen-studio-pp v1.1.9` 即安装成功，效果与脚本完全一致。
 
 > 说明：安装/启动/卸载脚本的提示信息为英文，这是刻意的 —— Windows CMD 对含中文的批处理文件存在编码解析 bug（会把中文提示误当成命令执行），纯 ASCII 脚本在所有语言区域下都稳定。命令用法见下方表格，含义一目了然。
 
