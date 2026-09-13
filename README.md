@@ -24,6 +24,9 @@
 | **本地密钥** | 自动生成 `sk-qpp-...` 密钥，一键复制 / 重新生成，外部工具只认这个密钥 |
 | **思考摘要** | 思考过程通过 `reasoning_content` 字段透传（Cherry Studio 自动折叠展示），可在请求中开关 |
 | **多轮对话** | 自动把 messages 历史拼接为上下文，无状态设计，无需维护会话 |
+| **多模态（v1.2.0）** | OpenAI 多模态格式直接发**图片 / 视频 / 音频 / 文档**，自动上传 Qwen 并挂到对话 |
+| **Files API（v1.2.0）** | `POST/GET/DELETE /v1/files` 上传管理文件，chat 中用 `file_id` 引用，支持重试复用 |
+| **动态模型表（v1.2.0）** | `/v1/models` 实时从官网拉取，附 `capabilities` 能力矩阵（vision/video/audio/document/thinking/search） |
 | **依赖自检** | 启动时自动检查 Node 版本 / 依赖 / 配置目录 / 端口，缺失依赖自动安装 |
 | **防风控** | 全局请求节流（默认 3.2s），显著降低触发 Qwen 滑块验证的概率 |
 | **零运行时依赖** | 核心只用 Node 内置模块，下载即用，离线可运行 |
@@ -55,7 +58,7 @@ cd /d "C:\你的解压路径\qwen-studio-pp"
 npm install -g .
 qspp --version
 ```
-显示 `qwen-studio-pp v1.1.9` 即安装成功，效果与脚本完全一致。
+显示 `qwen-studio-pp v1.2.0` 即安装成功，效果与脚本完全一致。
 
 > 说明：安装/启动/卸载脚本的提示信息为英文，这是刻意的 —— Windows CMD 对含中文的批处理文件存在编码解析 bug（会把中文提示误当成命令执行），纯 ASCII 脚本在所有语言区域下都稳定。命令用法见下方表格，含义一目了然。
 
@@ -167,9 +170,65 @@ curl http://127.0.0.1:8818/v1/chat/completions \
 - 流式 chunk 格式：`role` → `reasoning_content`（思考）→ `content`（正文）→ `finish_reason:"stop"` + `usage` → `[DONE]`
 - 非流式响应：思考文本在 `choices[0].message.reasoning_content`
 
+#### 多模态（v1.2.0）
+
+支持 OpenAI 标准多模态 content 数组，二进制部分自动上传 Qwen（STS→OSS 管线）后挂到对话：
+
+```jsonc
+{
+  "model": "qwen3.7-plus",
+  "messages": [{
+    "role": "user",
+    "content": [
+      { "type": "text", "text": "这张图里是什么？" },
+      { "type": "image_url", "image_url": { "url": "https://... 或 data:image/png;base64,..." } },
+      { "type": "video_url", "video_url": { "url": "data:video/mp4;base64,..." } },   // 扩展类型: 视频
+      { "type": "input_audio", "input_audio": { "data": "<base64>", "format": "wav" } },
+      { "type": "file", "file": { "file_id": "file-xxx" } }                             // 引用 /v1/files 上传的文件
+    ]
+  }]
+}
+```
+
+**附件类型与模型支持（实测校准）：**
+
+| 类型 | 传法 | 上限 | 支持模型 |
+|------|------|------|----------|
+| 图片 | `image_url`（URL 或 base64 data URI） | 10MB | 任意视觉模型 |
+| 文档 | `file` + `file_id` / `file_data` | 30MB | 任意模型 |
+| 音频 | `input_audio`（base64 + format） | 25MB | 任意模型 |
+| 视频 | `video_url`（URL 或 data URI，扩展类型） | 100MB | **仅 `qwen3.5-omni-plus`**（实测其他模型拒收，发错模型会收到明确提示） |
+
+- `file` part 也支持 `file_data`（data URI / http URL）直接内联，无需预先上传
+- 多轮历史中的附件会合并挂到当前消息（上游仅接受单条消息）
+- 文档上传后自动触发 Qwen 服务端解析（约 2~5 秒），解析失败会给出可读错误
+
+#### 示例（curl 发图）
+
+```bash
+curl http://127.0.0.1:8818/v1/chat/completions \
+  -H "Authorization: Bearer sk-qpp-你的密钥" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"qwen3.7-plus","messages":[{"role":"user","content":[{"type":"text","text":"图里是什么颜色？"},{"type":"image_url","image_url":{"url":"data:image/png;base64,iVBOR..."}}]}]}'
+```
+
+### `POST /v1/files`（v1.2.0）
+
+OpenAI Files API 风格，multipart/form-data 上传，返回 `file-` 开头的 id（本地持久化，重启不丢）：
+
+```bash
+curl http://127.0.0.1:8818/v1/files \
+  -H "Authorization: Bearer sk-qpp-你的密钥" \
+  -F "file=@报告.pdf" -F "purpose=assistants"
+# => { "id": "file-xxxx", "object": "file", "bytes": 12345, "filename": "报告.pdf", ... }
+```
+
+- `GET /v1/files` 列表；`GET /v1/files/{id}` 详情；`GET /v1/files/{id}/content` 302 跳转原始文件；`DELETE /v1/files/{id}` 删除（同时尽力删除上游）
+- chat 中用 `{"type":"file","file":{"file_id":"file-xxxx"}}` 引用
+
 ### `GET /v1/models`
 
-返回你 Qwen 账号可用的真实模型列表（qwen3.8-max、qwen3.7-max、qwen3.7-plus、qwen3.6-plus、qwen3.5-plus、qwen3.5-omni-plus 等）。
+**动态返回**你 Qwen 账号当前可用的真实模型列表（5 分钟缓存），除标准字段外附扩展信息：`capabilities`（vision/video/audio/document/thinking/search 布尔矩阵）、`max_context_length`、`modality`。上游拉取失败时自动回退内置静态表，不影响调用。
 
 ### 错误格式
 
